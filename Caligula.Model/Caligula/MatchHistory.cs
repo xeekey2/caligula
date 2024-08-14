@@ -16,7 +16,8 @@ namespace Caligula.Model.Caligula
         public int PlayerTwoTotalWins { get; set; }
         public int PlayerOneTotalLosses { get; set; }
         public int PlayerTwoTotalLosses { get; set; }
-        public List<int> LastFiveResults { get; set; } 
+        public List<int> LastFiveResults { get; set; }
+        public int TotalRatingChange { get; set; }  
     }
 
 

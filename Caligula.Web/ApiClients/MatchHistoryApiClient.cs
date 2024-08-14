@@ -50,6 +50,20 @@ namespace Caligula.Web.ApiClients
             }
         }
 
+        public async Task<MatchHistory> GetMatchHistoryForOnePlayerAsync(string player1Name)
+        {
+            try
+            {
+                return await _playerComparisonService.GetMatchHistoryForSinglePlayerAsync(player1Name);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error occurred during player comparison: {ex.Message}");
+                return null;
+            }
+        }
+
+
         public async Task<string> GetProPlayerNameAsync(int playerCharacterId)
         {
             var response = await _httpClient.GetAsync($"/proplayername/{playerCharacterId}");

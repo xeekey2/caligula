@@ -47,6 +47,33 @@ namespace Caligula.Service
             return history;
         }
 
+        public async Task<MatchHistory> GetMatchHistoryForSinglePlayerAsync(string playerName)
+        {
+            var playerIds = await GetPlayerIdsAsync(playerName);
+
+            if (!playerIds.Any())
+            {
+                throw new Exception("Player not found.");
+            }
+
+            var matches = await GetMatchesForPlayerAsync(playerIds);
+            var caligulaMatches = await matches.ToCaliMatchesAsync();
+
+            var history = new MatchHistory
+            {
+                CommonMatches = caligulaMatches.OrderByDescending(x => x.Date).ToList(),
+                PlayerOne = new Player { Name = playerName, Ids = playerIds },
+                PlayerOneTotalWins = caligulaMatches.Count(x => playerIds.Contains(x.WinnerId)),
+                PlayerOneTotalLosses = caligulaMatches.Count(x => playerIds.Contains(x.LoserId)),
+                TotalRatingChange = caligulaMatches.Sum(x => x.Participants
+                    .Where(p => playerIds.Contains(p.participant.playerCharacterId))
+                    .Sum(p => p.participant.ratingChange) ?? 0),
+            };
+
+            return history;
+        }
+
+
         private async Task<List<int>> GetPlayerIdsAsync(string playerName)
         {
             return await _dbContext.Players
@@ -54,6 +81,24 @@ namespace Caligula.Service
                 .Select(p => p.PlayerId)
                 .ToListAsync();
         }
+
+        private async Task<List<DbMatch>> GetMatchesForPlayerAsync(List<int> playerIds)
+        {
+            var matches = await _dbContext.Matches
+                .Include(m => m.Participants)
+                    .ThenInclude(p => p.DbPlayer)
+                .Include(m => m.Map)
+                .Where(m =>
+                    m.Participants.Any(p => playerIds.Contains(p.PlayerId)) &&
+                    m.Participants.All(p => !p.DbPlayer.Name.Contains("#") &&
+                    m.Participants.Count == 2)
+                )
+                .ToListAsync();
+
+
+            return matches;
+       }
+
 
         private async Task<List<DbMatch>> GetMatchesForPlayersAsync(List<int> player1Ids, List<int> player2Ids)
         {
@@ -70,7 +115,8 @@ namespace Caligula.Service
             var commonMatches = matches
                 .Where(m => m.Participants.Any(p => player1Ids.Contains(p.PlayerId)) &&
                             m.Participants.Any(p => player2Ids.Contains(p.PlayerId)) &&
-                            m.Participants.Count == 2)
+                            m.Participants.All(p => !p.DbPlayer.Name.Contains("#") &&
+                            m.Participants.Count == 2))
                 .ToList();
 
             return commonMatches;

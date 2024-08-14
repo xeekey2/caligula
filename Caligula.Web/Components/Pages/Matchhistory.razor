@@ -13,19 +13,37 @@
     <input @bind="player2Name" id="player2Name" />
 
     <button @onclick="GetCommonMatchHistory">Get Common Matches</button>
-    <button @onclick="RunDailyDataCollection">Run data collector</button>
+    <button @onclick="RunDailyDataCollection">Run Data Collector</button>
+</div>
 
+<div style="margin-top: 20px;">
+    <h4>Search Match History for Single Player</h4>
+    <label for="singlePlayerName">Player Name:</label>
+    <input @bind="singlePlayerName" id="singlePlayerName" />
+
+    <button @onclick="GetSinglePlayerMatchHistory">Get Match History</button>
 </div>
 
 @if (searchCompleted)
 {
     @if (matchHistory?.CommonMatches.Any() ?? false)
     {
-        <h4>Ladder Matches between @matchHistory.PlayerOne.Name and @matchHistory.PlayerTwo.Name</h4>
+        @if (isSinglePlayerSearch)
+        {
+            <h4>Match History for @matchHistory.PlayerOne.Name</h4>
+        }
+        else
+        {
+            <h4>Ladder Matches between @matchHistory.PlayerOne.Name and @matchHistory.PlayerTwo.Name</h4>
+        }
         <p>
             Total Wins:<br>
-            @matchHistory.PlayerOne.Name: @matchHistory.PlayerOneTotalWins - @matchHistory.PlayerOneTotalLosses<br>
-            @matchHistory.PlayerTwo.Name: @matchHistory.PlayerTwoTotalWins - @matchHistory.PlayerTwoTotalLosses
+            @matchHistory.PlayerOne.Name: @matchHistory.PlayerOneTotalWins - @matchHistory.PlayerOneTotalLosses
+            @if (!isSinglePlayerSearch)
+            {
+                <br />
+                @matchHistory.PlayerOne.Name; @matchHistory.PlayerOneTotalWins; @matchHistory.PlayerOneTotalLosses;
+            }
         </p>
         <table class="styled-table">
             <thead>
@@ -61,20 +79,30 @@
     }
     else
     {
-        <p>No common matches found.</p>
+        <p>No matches found.</p>
     }
 }
 
 @code {
     private string player1Name = "";
     private string player2Name = "";
+    private string singlePlayerName = "";
     private Caligula.Model.Caligula.MatchHistory matchHistory;
     private bool searchCompleted = false;
+    private bool isSinglePlayerSearch = false;
 
     private async Task GetCommonMatchHistory()
     {
         matchHistory = await MatchHistoryApi.GetMatchHistoryForTwoPlayersAsync(player1Name, player2Name);
         searchCompleted = true;
+        isSinglePlayerSearch = false;
+    }
+
+    private async Task GetSinglePlayerMatchHistory()
+    {
+        matchHistory = await MatchHistoryApi.GetMatchHistoryForOnePlayerAsync(singlePlayerName);
+        searchCompleted = true;
+        isSinglePlayerSearch = true;
     }
 
     private async Task RunDailyDataCollection()

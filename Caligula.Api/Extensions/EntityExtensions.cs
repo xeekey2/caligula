@@ -291,17 +291,14 @@ namespace Caligula.Service.Extensions
             var winner = match.Participants.FirstOrDefault(x => x.Decision == "WIN");
             var loser = match.Participants.FirstOrDefault(x => x.Decision != "WIN");
 
-            var winnerName = winner != null ? await winner.PlayerId.ToPlayerNameEnt() : null;
-            var loserName = loser != null ? await loser.PlayerId.ToPlayerNameEnt() : null;
-
             return new MatchObject
             {
                 Players = players,
                 Map = match.Map.ToMapEnt(),
-                Winner = winnerName,
-                Loser = loserName,
-                WinnerId = winner?.PlayerId ?? 0,
-                LoserId = loser?.PlayerId ?? 0,
+                Winner = winner.DbPlayer.Name,
+                Loser = loser.DbPlayer.Name,
+                WinnerId = winner.DbPlayer.PlayerId,
+                LoserId = loser.DbPlayer.PlayerId,
                 Duration = match.Duration,
                 Date = match.Date,
                 Participants = match.Participants.Select(p => p.ToParticipant()).ToArray(),
@@ -318,11 +315,11 @@ namespace Caligula.Service.Extensions
 
         private static async Task<Player> ToPlayerEntAsync(DbParticipant participant)
         {
-            var name = await participant.PlayerId.ToPlayerNameEnt();
+            //var name = await participant.PlayerId.ToPlayerNameEnt();
             return new Player
             {
                 Id = participant.PlayerId,
-                Name = name
+                Name = participant.DbPlayer.Name
             };
         }
 

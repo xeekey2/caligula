@@ -29,9 +29,9 @@ namespace Caligula.Service
         {
             List<string> sc2ProPlayers = new List<string>
             {
-                "Rotterdam",
-                "Iba",
-                "Fjant",
+                //"Rotterdam",
+                //"Iba",
+                //"Fjant",
                 //"Maru",
                 //"Serral",
                 //"Rogue",
@@ -69,6 +69,7 @@ namespace Caligula.Service
                 //"Coffee",
                 //"Spirit",
                 //"Clem",
+                "hero"
             };
 
             foreach (var playerName in sc2ProPlayers)
