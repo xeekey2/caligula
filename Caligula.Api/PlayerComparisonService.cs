@@ -76,9 +76,15 @@ namespace Caligula.Service
 
         private async Task<List<int>> GetPlayerIdsAsync(string playerName)
         {
+            var normalized = playerName.Trim().ToLowerInvariant();
+            var battleTagPrefix = normalized + "#";
+
             return await _dbContext.Players
-                .Where(p => p.Name == playerName)
+                .Where(p =>
+                    p.Name.ToLower() == normalized ||
+                    p.Name.ToLower().StartsWith(battleTagPrefix))
                 .Select(p => p.PlayerId)
+                .Distinct()
                 .ToListAsync();
         }
 
@@ -90,9 +96,7 @@ namespace Caligula.Service
                 .Include(m => m.Map)
                 .Where(m =>
                     m.Participants.Any(p => playerIds.Contains(p.PlayerId)) &&
-                    m.Participants.All(p => !p.DbPlayer.Name.Contains("#") &&
                     m.Participants.Count == 2)
-                )
                 .ToListAsync();
 
 
@@ -115,8 +119,7 @@ namespace Caligula.Service
             var commonMatches = matches
                 .Where(m => m.Participants.Any(p => player1Ids.Contains(p.PlayerId)) &&
                             m.Participants.Any(p => player2Ids.Contains(p.PlayerId)) &&
-                            m.Participants.All(p => !p.DbPlayer.Name.Contains("#") &&
-                            m.Participants.Count == 2))
+                            m.Participants.Count == 2)
                 .ToList();
 
             return commonMatches;
