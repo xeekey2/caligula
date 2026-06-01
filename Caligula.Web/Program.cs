@@ -9,8 +9,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add service defaults & Aspire components.
 builder.AddServiceDefaults();
+var defaultConnection =
+    builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? "Server=(localdb)\\MSSQLLocalDB;Database=Caligula;Trusted_Connection=True;";
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer("Server=(localdb)\\MSSQLLocalDB;Database=Caligula;Trusted_Connection=True;"));
+    options.UseSqlServer(defaultConnection));
 
 // Add services to the container.
 builder.Services.AddRazorComponents()

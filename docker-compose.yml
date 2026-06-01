@@ -1,0 +1,11 @@
+# SQL Server for local/Cloud Agent development on Linux (replaces Windows LocalDB).
+services:
+  caligula-sql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: caligula-sql
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Caligula_Dev123!"
+    ports:
+      - "1433:1433"
+    restart: unless-stopped

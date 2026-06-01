@@ -15,7 +15,9 @@ namespace Caligula.Service.Entity
             IConfigurationRoot configuration = new ConfigurationBuilder()
                 .Build();
 
-            optionsBuilder.UseSqlServer("Server=(localdb)\\MSSQLLocalDB;Database=Caligula;Trusted_Connection=True;");
+            var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+                ?? "Server=(localdb)\\MSSQLLocalDB;Database=Caligula;Trusted_Connection=True;";
+            optionsBuilder.UseSqlServer(connectionString);
 
             return new ApplicationDbContext(optionsBuilder.Options);
         }
