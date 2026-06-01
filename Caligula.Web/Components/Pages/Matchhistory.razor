@@ -57,7 +57,7 @@
         <div style="margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid var(--border-subtle);">
             <div class="panel-title">Data</div>
             <p style="margin: 0 0 0.75rem; font-size: 0.85rem; color: var(--fg-muted);">
-                Pull the latest pro ladder games from SC2Pulse into the local database.
+                Discovers every pro on SC2Pulse and imports their full 1v1 ladder history. First run can take a long time; prefer the CLI job below.
             </p>
             <button class="btn btn-secondary" disabled="@isCollecting" @onclick="RunDailyDataCollection">
                 @(isCollecting ? "Syncing…" : "Sync ladder data")

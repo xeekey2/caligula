@@ -18,6 +18,15 @@ var apiServiceBaseUrl =
     ?? "http://localhost:5483";
 
 var runOnce = args.Contains("--run-once", StringComparer.OrdinalIgnoreCase);
+int? maxPros = null;
+var maxProsIndex = Array.FindIndex(args, a => a.Equals("--max-pros", StringComparison.OrdinalIgnoreCase));
+if (maxProsIndex >= 0 && maxProsIndex + 1 < args.Length && int.TryParse(args[maxProsIndex + 1], out var parsed))
+    maxPros = parsed;
+
+int? onlyProId = null;
+var proIdIndex = Array.FindIndex(args, a => a.Equals("--pro-id", StringComparison.OrdinalIgnoreCase));
+if (proIdIndex >= 0 && proIdIndex + 1 < args.Length && int.TryParse(args[proIdIndex + 1], out var proIdParsed))
+    onlyProId = proIdParsed;
 
 void ConfigureServices(IServiceCollection services)
 {
@@ -40,7 +49,7 @@ if (runOnce)
     using var scope = host.Services.CreateScope();
     var collector = scope.ServiceProvider.GetRequiredService<DataCollectionService>();
     Console.WriteLine($"Importing ladder matches via {apiServiceBaseUrl} ...");
-    await collector.RunDailyMatchHistoryUpdateAsync();
+    await collector.RunFullProMatchImportAsync(maxPros: maxPros, onlyProPlayerId: onlyProId);
     Console.WriteLine("Import finished.");
     return;
 }

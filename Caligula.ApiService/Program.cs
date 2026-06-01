@@ -35,7 +35,11 @@ app.MapGet("/playerid/{playerName}", async (string playerName) =>
 
 app.MapGet("/proplayer/matchhistory/{proPlayerId}/{date?}", async (int proPlayerId, string? date) =>
 {
-    var response = await httpClient.GetAsync($"api/group/match?proPlayerId={proPlayerId}&dateCursor={date}&typeCursor=_1V1");
+    var dateCursor = string.IsNullOrWhiteSpace(date)
+        ? DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.ffffff'Z'")
+        : date;
+    var response = await httpClient.GetAsync(
+        $"api/group/match?proPlayerId={proPlayerId}&dateCursor={Uri.EscapeDataString(dateCursor)}&typeCursor=_1V1");
     if (response.IsSuccessStatusCode)
     {
         var content = await response.Content.ReadAsStringAsync();

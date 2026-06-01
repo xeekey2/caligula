@@ -62,7 +62,7 @@ export CALIGULA_APISERVICE_URL=http://localhost:5483
 dotnet run --project Caligula.DataCollector -- --run-once
 ```
 
-Player list is in `Caligula.Api/DataCollectionService.cs` (`sc2ProPlayers`). Scheduled mode (midnight Quartz job): run `Caligula.DataCollector` without `--run-once`.
+Import discovers **all SC2Pulse pro players** automatically (scans sequential `proPlayerId` values) and paginates match history until exhausted (~20 matches per page). This can take a long time on first run. Scheduled mode (midnight Quartz job): run `Caligula.DataCollector` without `--run-once`.
 
 ### Build / test
 
