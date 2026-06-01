@@ -29,53 +29,58 @@ namespace Caligula.Service
         {
             List<string> sc2ProPlayers = new List<string>
             {
-                //"Rotterdam",
-                //"Iba",
-                //"Fjant",
-                //"Maru",
-                //"Serral",
-                //"Rogue",
-                //"Reynor",
-                //"Zest",
-                //"Dark",
-                //"Trap",
-                //"TY",
-                //"Stats",
-                //"Bunny",
-                //"Solar",
-                //"Heromarine",
-                //"ShowTime",
-                //"Scarlett",
-                //"Lambo",
-                //"Elazer",
-                //"Special",
-                //"uThermal",
-                //"Astrea",
-                //"ByuN",
-                //"Creator",
-                //"DRG",
-                //"Cure",
-                //"Harstem",
-                //"MaxPax",
-                //"Cham",
-                //"Nice",
-                //"Has",
-                //"Kelazhur",
-                //"Cyan",
-                //"Soo",
-                //"Classic",
-                //"Oliveira",
-                //"Gumiho",
-                //"Coffee",
-                //"Spirit",
-                //"Clem",
-                "hero"
+                "Rotterdam",
+                "Iba",
+                "Fjant",
+                "Maru",
+                "Serral",
+                "Rogue",
+                "Reynor",
+                "Zest",
+                "Dark",
+                "Trap",
+                "TY",
+                "Stats",
+                "Bunny",
+                "Solar",
+                "Heromarine",
+                "ShowTime",
+                "Scarlett",
+                "Lambo",
+                "Elazer",
+                "Special",
+                "uThermal",
+                "Astrea",
+                "ByuN",
+                "Creator",
+                "DRG",
+                "Cure",
+                "Harstem",
+                "MaxPax",
+                "Cham",
+                "Nice",
+                "Has",
+                "Kelazhur",
+                "Cyan",
+                "Soo",
+                "Classic",
+                "Oliveira",
+                "Gumiho",
+                "Coffee",
+                "Spirit",
+                "Clem",
+                "Hero",
             };
 
             foreach (var playerName in sc2ProPlayers)
             {
+                Console.WriteLine($"Collecting matches for {playerName}...");
                 var player = await GetPlayerInfoAsync(playerName);
-                if (player == null) continue;
+                if (player == null)
+                {
+                    Console.WriteLine($"Skipping {playerName}: player not found on SC2Pulse.");
+                    continue;
+                }
 
                 var matchHistories = await GetMatchHistoriesDailyAsync(player.ProPlayerId, DateTime.Now.AddMonths(-3), DateTime.Now);
 
@@ -129,17 +134,31 @@ namespace Caligula.Service
             }
         }
 
+        private static int ParseRating(object? rating) =>
+            rating != null && int.TryParse(rating.ToString(), out var value) ? value : 0;
+
         private async Task<Player> GetPlayerInfoAsync(string playerName)
         {
             var response = await _httpClient.GetAsync($"/playerid/{playerName}");
             if (response.IsSuccessStatusCode)
             {
                 var jsonString = await response.Content.ReadAsStringAsync();
-                var playerStats = JsonConvert.DeserializeObject<List<SearchResponse>>(jsonString);
+                List<SearchResponse>? playerStats;
+                try
+                {
+                    playerStats = JsonConvert.DeserializeObject<List<SearchResponse>>(jsonString);
+                }
+                catch (JsonException ex)
+                {
+                    Console.WriteLine($"Failed to parse player search for {playerName}: {ex.Message}");
+                    return null;
+                }
                 var selectedPlayer = playerStats?
-                    .Where(p => p.currentStats != null && p.currentStats.rating != null)
-                    .OrderByDescending(p => p.currentStats.rating)
-                    .FirstOrDefault();
+                    .FirstOrDefault(p => string.Equals(p.members?.proNickname, playerName, StringComparison.OrdinalIgnoreCase))
+                    ?? playerStats?
+                        .Where(p => p.members?.proNickname != null)
+                        .OrderByDescending(p => ParseRating(p.currentStats?.rating))
+                        .FirstOrDefault();
 
                 if (selectedPlayer?.members != null)
                 {

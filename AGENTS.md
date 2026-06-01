@@ -51,7 +51,18 @@ dotnet run --project Caligula.AppHost/Caligula.AppHost.csproj --launch-profile h
 - **Web UI**: `http://localhost:5120` (port may vary; check dashboard **Resources** if 5120 is not up)
 - **ApiService** (SC2Pulse proxy): typically `http://localhost:5483` — e.g. `GET /playerid/{name}`
 
-Match search reads the **local database only** (empty DB → “No matches found”). Ingestion uses ApiService + SC2Pulse via **Run Data Collector** on the Match History page.
+Match search reads the **local database only** (empty DB → “No matches found”). Ingestion uses ApiService + SC2Pulse:
+
+- **UI**: **Run Data Collector** on `/Matchhistory` (same `DataCollectionService` logic).
+- **CLI** (one-shot import; ApiService must be running):
+
+```bash
+export ConnectionStrings__DefaultConnection='Server=localhost,1433;Database=Caligula;User Id=sa;Password=Caligula_Dev123!;TrustServerCertificate=True;'
+export CALIGULA_APISERVICE_URL=http://localhost:5483
+dotnet run --project Caligula.DataCollector -- --run-once
+```
+
+Player list is in `Caligula.Api/DataCollectionService.cs` (`sc2ProPlayers`). Scheduled mode (midnight Quartz job): run `Caligula.DataCollector` without `--run-once`.
 
 ### Build / test
 
