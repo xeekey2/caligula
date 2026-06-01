@@ -81,8 +81,15 @@ namespace Caligula.Service
                         continue;
                     }
 
-                    if (await TryPersistMatchAsync(match, cancellationToken))
-                        savedForPlayer++;
+                    try
+                    {
+                        if (await TryPersistMatchAsync(match, cancellationToken))
+                            savedForPlayer++;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"  Failed match {match.match.Id}: {ex.Message}");
+                    }
                 }
 
                 totalSaved += savedForPlayer;
@@ -102,7 +109,12 @@ namespace Caligula.Service
 
             var map = await _dbContext.EnsureMapExistsAsync(match.map.name);
 
-            var participantPlayers = await match.participants.ToPlayerListAsync();
+            var participantPlayers = match.participants.ToPlayerList();
+            if (participantPlayers.Count < 2)
+            {
+                Console.WriteLine($"  Skipping match {match.match.Id}: missing participant names in API payload.");
+                return false;
+            }
             foreach (var participantPlayer in participantPlayers)
             {
                 if (participantPlayer == null)

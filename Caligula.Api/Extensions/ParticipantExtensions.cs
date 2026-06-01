@@ -4,29 +4,54 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Caligula.Service.Extensions
 {
-
     public static class ParticipantExtensions
     {
-        public static async Task<List<Player>> ToPlayerListAsync(this IEnumerable<Participant> participants)
-        {
-            var tasks = participants.Select(p => ToPlayerAsync(p.participant)).ToList();
-            var players = await Task.WhenAll(tasks);
-            return players.ToList();
-        }
+        public static Task<List<Player>> ToPlayerListAsync(this IEnumerable<Participant> participants) =>
+            Task.FromResult(participants.ToPlayerList());
 
-        private static async Task<Player> ToPlayerAsync(Participant1 participant)
+        public static List<Player> ToPlayerList(this IEnumerable<Participant> participants) =>
+            participants.Select(ToPlayer).Where(p => p != null).ToList()!;
+
+        public static Player? ToPlayer(this Participant entry)
         {
-            var name = await participant.playerCharacterId.ToPlayerName();
+            var participant = entry.participant;
+            if (participant == null)
+                return null;
+
+            var name = entry.ResolveDisplayName();
+            if (string.IsNullOrWhiteSpace(name))
+                return null;
+
             return new Player
             {
                 Id = participant.playerCharacterId,
                 Name = name
             };
+        }
+
+        public static string? ResolveDisplayName(this Participant entry)
+        {
+            var member = entry.team?.members?
+                .FirstOrDefault(m => m.character?.id == entry.participant.playerCharacterId)
+                ?? entry.team?.members?.FirstOrDefault();
+
+            if (member != null)
+            {
+                if (!string.IsNullOrWhiteSpace(member.proNickname))
+                    return member.proNickname;
+
+                if (!string.IsNullOrWhiteSpace(member.character?.name))
+                    return member.character.name;
+
+                if (!string.IsNullOrWhiteSpace(member.character?.tag))
+                    return member.character.tag;
+            }
+
+            return null;
         }
 
         public static async Task<string> ToPlayerName(this int participantId)
@@ -37,21 +62,18 @@ namespace Caligula.Service.Extensions
             {
                 var json = await response.Content.ReadAsStringAsync();
                 var playerData = JsonConvert.DeserializeObject<GroupResponse>(json);
-                var proPlayerName = playerData.characters.FirstOrDefault()?.members.proNickname;
+                var proPlayerName = playerData?.characters?.FirstOrDefault()?.members?.proNickname;
 
                 if (!string.IsNullOrEmpty(proPlayerName))
-                {
                     return proPlayerName;
-                }
             }
 
-            // If the pro player name is empty or null, or if the request failed, try to get the normal player name
             response = await sc2PulseWrapper.GetNameFromId(participantId);
             if (response.IsSuccessStatusCode)
             {
                 var json = await response.Content.ReadAsStringAsync();
                 var playerData = JsonConvert.DeserializeObject<List<PlayerDataResponse>>(json);
-                return playerData.FirstOrDefault()?.Name;
+                return playerData?.FirstOrDefault()?.Name;
             }
 
             return null;

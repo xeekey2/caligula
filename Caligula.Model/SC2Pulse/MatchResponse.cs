@@ -49,8 +49,14 @@ namespace Caligula.Model.SC2Pulse
     public class Participant
     {
         public Participant1 participant { get; set; }
+        public MatchTeam team { get; set; }
         public string twitchVodUrl { get; set; }
         public bool? subOnlyTwitchVod { get; set; }
+    }
+
+    public class MatchTeam
+    {
+        public List<Member> members { get; set; }
     }
 
     public class Participant1
@@ -81,6 +87,7 @@ namespace Caligula.Model.SC2Pulse
         public int accountId { get; set; }
         public string region { get; set; }
         public int battlenetId { get; set; }
+        public string tag { get; set; }
     }
 
     public class Account0

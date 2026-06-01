@@ -36,7 +36,7 @@ void ConfigureServices(IServiceCollection services)
     services.AddHttpClient<DataCollectionService>(client =>
     {
         client.BaseAddress = new Uri(apiServiceBaseUrl.TrimEnd('/') + "/");
-        client.Timeout = TimeSpan.FromMinutes(10);
+        client.Timeout = TimeSpan.FromMinutes(30);
     });
 }
 

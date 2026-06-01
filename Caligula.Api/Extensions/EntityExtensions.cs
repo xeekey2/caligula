@@ -272,7 +272,6 @@ namespace Caligula.Service.Extensions
                     RatingChange = participant.participant.ratingChange,
                     DbMatchId = match.match.Id
                 });
-                Console.WriteLine($"Participant added: PlayerId={playerInfo.Id}, Decision={participant.participant.decision}, RatingChange={participant.participant.ratingChange}");
             }
 
             return dbParticipants;
