@@ -1,112 +1,358 @@
-﻿@page "/Matchhistory"
+﻿@page "/matchhistory"
 @using Caligula.Web.ApiClients
+@using Microsoft.AspNetCore.WebUtilities
 @inject MatchHistoryApiClient MatchHistoryApi
+@inject NavigationManager Navigation
 @rendermode InteractiveServer
 
-<h3>Match History</h3>
+<PageTitle>Ladder Comparer · Caligula</PageTitle>
 
-<div>
-    <label for="player1Name">Player 1 Name:</label>
-    <input @bind="player1Name" id="player1Name" />
-
-    <label for="player2Name">Player 2 Name:</label>
-    <input @bind="player2Name" id="player2Name" />
-
-    <button @onclick="GetCommonMatchHistory">Get Common Matches</button>
-    <button @onclick="RunDailyDataCollection">Run Data Collector</button>
+<div class="page-header">
+    <h1>Ladder Comparer</h1>
+    <p>Search imported 1v1 ladder games. Use pro nicknames from the SC2Pulse roster.</p>
 </div>
 
-<div style="margin-top: 20px;">
-    <h4>Search Match History for Single Player</h4>
-    <label for="singlePlayerName">Player Name:</label>
-    <input @bind="singlePlayerName" id="singlePlayerName" />
-
-    <button @onclick="GetSinglePlayerMatchHistory">Get Match History</button>
-</div>
-
-@if (searchCompleted)
+@if (!string.IsNullOrEmpty(statusMessage))
 {
-    @if (matchHistory?.CommonMatches.Any() ?? false)
-    {
-        @if (isSinglePlayerSearch)
+    <div class="alert alert-info">@statusMessage</div>
+}
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-error">@errorMessage</div>
+}
+
+<div class="grid-2" style="align-items: start;">
+    <div class="panel panel-accent">
+        <div class="tabs">
+            <button type="button" class="tab @(activeTab == SearchTab.HeadToHead ? "active" : "")" @onclick="() => SetTab(SearchTab.HeadToHead)">
+                Head-to-head
+            </button>
+            <button type="button" class="tab @(activeTab == SearchTab.Solo ? "active" : "")" @onclick="() => SetTab(SearchTab.Solo)">
+                Solo history
+            </button>
+        </div>
+
+        @if (activeTab == SearchTab.HeadToHead)
         {
-            <h4>Match History for @matchHistory.PlayerOne.Name</h4>
+            <div class="field">
+                <label class="label" for="player1Name">Player 1</label>
+                <input class="input" id="player1Name" @bind="player1Name" placeholder="Serral" @onkeydown="OnSearchKey" />
+            </div>
+            <div class="field">
+                <label class="label" for="player2Name">Player 2</label>
+                <input class="input" id="player2Name" @bind="player2Name" placeholder="Clem" @onkeydown="OnSearchKey" />
+            </div>
+            <button class="btn btn-primary" disabled="@isLoading" @onclick="GetCommonMatchHistory">Compare players</button>
         }
         else
         {
-            <h4>Ladder Matches between @matchHistory.PlayerOne.Name and @matchHistory.PlayerTwo.Name</h4>
+            <div class="field">
+                <label class="label" for="singlePlayerName">Player</label>
+                <input class="input" id="singlePlayerName" @bind="singlePlayerName" placeholder="Serral" @onkeydown="OnSearchKey" />
+            </div>
+            <button class="btn btn-primary" disabled="@isLoading" @onclick="GetSinglePlayerMatchHistory">Get match history</button>
         }
-        <p>
-            Total Wins:<br>
-            @matchHistory.PlayerOne.Name: @matchHistory.PlayerOneTotalWins - @matchHistory.PlayerOneTotalLosses
-            @if (!isSinglePlayerSearch)
+
+        <div style="margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid var(--border-subtle);">
+            <div class="panel-title">Data</div>
+            <p style="margin: 0 0 0.75rem; font-size: 0.85rem; color: var(--fg-muted);">
+                Pull the latest pro ladder games from SC2Pulse into the local database.
+            </p>
+            <button class="btn btn-secondary" disabled="@isCollecting" @onclick="RunDailyDataCollection">
+                @(isCollecting ? "Syncing…" : "Sync ladder data")
+            </button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <div class="panel-title" style="margin: 0;">Results</div>
+            @if (searchCompleted && HasMatches)
             {
-                <br />
-                @matchHistory.PlayerOne.Name; @matchHistory.PlayerOneTotalWins; @matchHistory.PlayerOneTotalLosses;
+                <button type="button" class="btn btn-ghost" @onclick="ToggleSort">
+                    Sort: @(sortNewestFirst ? "Newest first" : "Oldest first")
+                </button>
             }
-        </p>
-        <table class="styled-table">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Map</th>
-                    <th>Duration</th>
-                    <th>Players</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var match in matchHistory.CommonMatches)
+        </div>
+
+        @if (isLoading)
+        {
+            <div class="loading-bar"></div>
+            <p style="color: var(--fg-muted); margin: 0;">Querying local database…</p>
+        }
+        else if (!searchCompleted)
+        {
+            <div class="empty-state">
+                Run a search to see ladder matches, win rates, and rating changes.
+            </div>
+        }
+        else if (!HasMatches)
+        {
+            <div class="empty-state">
+                No matches found. Try another nickname or run <strong>Sync ladder data</strong> if the database is empty.
+            </div>
+        }
+        else
+        {
+            <h3 style="margin-bottom: 1rem;">@ResultsTitle</h3>
+
+            <div class="grid-@(isSinglePlayerSearch ? "2" : "3")" style="margin-bottom: 1.25rem;">
+                @if (isSinglePlayerSearch)
                 {
-                    var winnerId = match.Participants.FirstOrDefault(p => p.participant.decision == "WIN")?.participant.playerCharacterId;
-                    var winnerName = match.Players.FirstOrDefault(p => p.Id == winnerId)?.Name;
-                    <tr>
-                        <td>@match.Date.ToString("dd.MM.yyyy HH:mm")</td>
-                        <td>@match.Map.Name</td>
-                        <td>@TimeSpan.FromSeconds(Convert.ToDouble(match.Duration)).ToString(@"mm\:ss")</td>
-                        <td>
-                            @foreach (var player in match.Players)
-                            {
-                                <span class="player-name @(player.Id == winnerId ? "winner" : "loser")">
-                                    @player.Name @(player.Id == winnerId ? "+" : "")@match.Participants.FirstOrDefault(p => p.participant.playerCharacterId == player.Id)?.participant.ratingChange
-                                </span>
-                                <br />
-                            }
-                        </td>
-                    </tr>
+                    <div class="stat-card">
+                        <div class="stat-card-label">Record</div>
+                        <div class="stat-card-value">
+                            <span class="win">@matchHistory!.PlayerOneTotalWins</span>
+                            <span style="color: var(--fg-subtle);"> – </span>
+                            <span class="loss">@matchHistory.PlayerOneTotalLosses</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-label">Matches</div>
+                        <div class="stat-card-value">@DisplayedMatches.Count</div>
+                    </div>
                 }
-            </tbody>
-        </table>
-    }
-    else
-    {
-        <p>No matches found.</p>
-    }
-}
+                else
+                {
+                    <div class="stat-card">
+                        <div class="stat-card-label">@matchHistory!.PlayerOne.Name</div>
+                        <div class="stat-card-value">
+                            <span class="win">@matchHistory.PlayerOneTotalWins</span>W
+                            <span class="loss" style="margin-left: 0.5rem;">@matchHistory.PlayerOneTotalLosses</span>L
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-label">@matchHistory.PlayerTwo.Name</div>
+                        <div class="stat-card-value">
+                            <span class="win">@matchHistory.PlayerTwoTotalWins</span>W
+                            <span class="loss" style="margin-left: 0.5rem;">@matchHistory.PlayerTwoTotalLosses</span>L
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-label">Series</div>
+                        <div class="stat-card-value">@DisplayedMatches.Count <span style="font-size: 0.75rem; color: var(--fg-subtle);">games</span></div>
+                    </div>
+                }
+            </div>
+
+            <div style="overflow-x: auto;">
+                <table class="match-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Map</th>
+                            <th>Duration</th>
+                            <th>Matchup</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var match in DisplayedMatches)
+                        {
+                            var winnerId = match.Participants.FirstOrDefault(p => p.participant.decision == "WIN")?.participant.playerCharacterId;
+                            <tr>
+                                <td class="date-cell">@match.Date.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td><span class="badge badge-map">@match.Map.Name</span></td>
+                                <td class="duration-cell">@FormatDuration(match.Duration)</td>
+                                <td>
+                                    @foreach (var player in match.Players)
+                                    {
+                                        var ratingChange = match.Participants.FirstOrDefault(p => p.participant.playerCharacterId == player.Id)?.participant.ratingChange;
+                                        var isWinner = player.Id == winnerId;
+                                        <div class="@(isWinner ? "player-win" : "player-loss")">
+                                            @player.Name
+                                            @if (ratingChange != null)
+                                            {
+                                                <span class="mmr-delta">@(isWinner ? "+" : "")@ratingChange</span>
+                                            }
+                                        </div>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
 
 @code {
+    private enum SearchTab { HeadToHead, Solo }
+
     private string player1Name = "";
     private string player2Name = "";
     private string singlePlayerName = "";
-    private Caligula.Model.Caligula.MatchHistory matchHistory;
-    private bool searchCompleted = false;
-    private bool isSinglePlayerSearch = false;
+    private Caligula.Model.Caligula.MatchHistory? matchHistory;
+    private bool searchCompleted;
+    private bool isSinglePlayerSearch;
+    private bool isLoading;
+    private bool isCollecting;
+    private bool sortNewestFirst = true;
+    private string? errorMessage;
+    private string? statusMessage;
+    private SearchTab activeTab = SearchTab.HeadToHead;
+    private bool queryHandled;
+
+    private bool HasMatches => matchHistory?.CommonMatches?.Any() ?? false;
+
+    private List<Caligula.Model.Caligula.MatchObject> DisplayedMatches =>
+        matchHistory?.CommonMatches == null
+            ? []
+            : (sortNewestFirst
+                ? matchHistory.CommonMatches.OrderByDescending(m => m.Date)
+                : matchHistory.CommonMatches.OrderBy(m => m.Date)).ToList();
+
+    private string ResultsTitle => matchHistory == null
+        ? ""
+        : isSinglePlayerSearch
+            ? $"Match history · {matchHistory.PlayerOne.Name}"
+            : $"{matchHistory.PlayerOne.Name} vs {matchHistory.PlayerTwo.Name}";
+
+    protected override void OnInitialized()
+    {
+        ApplyQueryString();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (!queryHandled)
+            ApplyQueryString();
+    }
+
+    private void ApplyQueryString()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+
+        if (query.TryGetValue("mode", out var mode) && mode == "solo")
+            activeTab = SearchTab.Solo;
+
+        if (query.TryGetValue("p1", out var p1))
+            player1Name = p1.ToString();
+
+        if (query.TryGetValue("p2", out var p2))
+            player2Name = p2.ToString();
+
+        if (query.TryGetValue("player", out var player))
+            singlePlayerName = player.ToString();
+
+        if (query.TryGetValue("p1", out _) && query.TryGetValue("p2", out _))
+        {
+            activeTab = SearchTab.HeadToHead;
+            queryHandled = true;
+            _ = RunSearchFromQueryAsync();
+        }
+        else if (query.TryGetValue("player", out _))
+        {
+            activeTab = SearchTab.Solo;
+            queryHandled = true;
+            _ = RunSearchFromQueryAsync();
+        }
+    }
+
+    private async Task RunSearchFromQueryAsync()
+    {
+        if (activeTab == SearchTab.HeadToHead && !string.IsNullOrWhiteSpace(player1Name) && !string.IsNullOrWhiteSpace(player2Name))
+            await GetCommonMatchHistory();
+        else if (activeTab == SearchTab.Solo && !string.IsNullOrWhiteSpace(singlePlayerName))
+            await GetSinglePlayerMatchHistory();
+    }
+
+    private void SetTab(SearchTab tab)
+    {
+        activeTab = tab;
+        errorMessage = null;
+        searchCompleted = false;
+    }
+
+    private void ToggleSort() => sortNewestFirst = !sortNewestFirst;
+
+    private async Task OnSearchKey(KeyboardEventArgs e)
+    {
+        if (e.Key != "Enter" || isLoading)
+            return;
+
+        if (activeTab == SearchTab.HeadToHead)
+            await GetCommonMatchHistory();
+        else
+            await GetSinglePlayerMatchHistory();
+    }
 
     private async Task GetCommonMatchHistory()
     {
-        matchHistory = await MatchHistoryApi.GetMatchHistoryForTwoPlayersAsync(player1Name, player2Name);
-        searchCompleted = true;
-        isSinglePlayerSearch = false;
+        await RunSearchAsync(async () =>
+        {
+            isSinglePlayerSearch = false;
+            var result = await MatchHistoryApi.GetMatchHistoryForTwoPlayersAsync(player1Name.Trim(), player2Name.Trim());
+            if (result == null)
+                throw new InvalidOperationException("Search failed. Check player names and try again.");
+            matchHistory = result;
+        });
     }
 
     private async Task GetSinglePlayerMatchHistory()
     {
-        matchHistory = await MatchHistoryApi.GetMatchHistoryForOnePlayerAsync(singlePlayerName);
-        searchCompleted = true;
-        isSinglePlayerSearch = true;
+        await RunSearchAsync(async () =>
+        {
+            isSinglePlayerSearch = true;
+            var result = await MatchHistoryApi.GetMatchHistoryForOnePlayerAsync(singlePlayerName.Trim());
+            if (result == null)
+                throw new InvalidOperationException("Search failed. Check player name and try again.");
+            matchHistory = result;
+        });
+    }
+
+    private async Task RunSearchAsync(Func<Task> search)
+    {
+        isLoading = true;
+        errorMessage = null;
+        searchCompleted = false;
+        StateHasChanged();
+
+        try
+        {
+            await search();
+            searchCompleted = true;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            matchHistory = null;
+            searchCompleted = true;
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     private async Task RunDailyDataCollection()
     {
-        await MatchHistoryApi.RunDailyMatchHistoryUpdateAsync();
+        isCollecting = true;
+        statusMessage = null;
+        errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            await MatchHistoryApi.RunDailyMatchHistoryUpdateAsync();
+            statusMessage = "Ladder sync finished. Run a search to see new matches.";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Sync failed: {ex.Message}";
+        }
+        finally
+        {
+            isCollecting = false;
+        }
+    }
+
+    private static string FormatDuration(int? seconds)
+    {
+        if (seconds == null)
+            return "—";
+        return TimeSpan.FromSeconds(seconds.Value).ToString(@"m\:ss");
     }
 }

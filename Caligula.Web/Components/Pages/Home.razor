@@ -1,7 +1,88 @@
 ﻿@page "/"
+@inject NavigationManager Navigation
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Caligula · Overview</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="page-header">
+    <h1>Ladder Comparer</h1>
+    <p>Head-to-head and solo match history from your local SC2Pulse import. High-contrast, fast lookup.</p>
+</div>
 
-Welcome to your new app.
+<div class="grid-3" style="margin-bottom: 1.5rem;">
+    <div class="stat-card">
+        <div class="stat-card-label">Primary tool</div>
+        <div class="stat-card-value" style="font-size: 1rem;">Ladder Comparer</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-label">Data source</div>
+        <div class="stat-card-value" style="font-size: 1rem;">SC2Pulse API</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-label">Storage</div>
+        <div class="stat-card-value" style="font-size: 1rem;">SQL Server</div>
+    </div>
+</div>
+
+<div class="panel panel-accent" style="margin-bottom: 1.5rem;">
+    <div class="panel-title">Quick compare</div>
+    <div class="grid-2">
+        <div class="field" style="margin-bottom: 0;">
+            <label class="label" for="quickP1">Player 1</label>
+            <input class="input" id="quickP1" @bind="quickPlayer1" placeholder="e.g. Serral" />
+        </div>
+        <div class="field" style="margin-bottom: 0;">
+            <label class="label" for="quickP2">Player 2</label>
+            <input class="input" id="quickP2" @bind="quickPlayer2" placeholder="e.g. Clem" />
+        </div>
+    </div>
+    <div class="toolbar">
+        <button class="btn btn-primary" @onclick="GoHeadToHead">Open head-to-head</button>
+        <button class="btn btn-secondary" @onclick="GoSolo" disabled="@(string.IsNullOrWhiteSpace(quickPlayer1))">Solo history for P1</button>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-title">Popular pros</div>
+    <div class="chip-row">
+        @foreach (var name in FeaturedPlayers)
+        {
+            <button type="button" class="chip" @onclick="() => OpenPlayer(name)">@name</button>
+        }
+    </div>
+</div>
+
+<div class="panel" style="margin-top: 1.5rem;">
+    <div class="panel-title">Getting started</div>
+    <ol style="margin: 0; padding-left: 1.25rem; color: var(--fg-muted);">
+        <li style="margin-bottom: 0.5rem;">Import ladder data with <strong style="color: var(--fg);">Sync ladder data</strong> on the Ladder Comparer page.</li>
+        <li style="margin-bottom: 0.5rem;">Search by pro nickname (e.g. <code style="color: var(--accent);">Serral</code>, not battle tag).</li>
+        <li>Head-to-head shows only 1v1 ladder games between two tracked players.</li>
+    </ol>
+</div>
+
+@code {
+    private string quickPlayer1 = "";
+    private string quickPlayer2 = "";
+
+    private static readonly string[] FeaturedPlayers =
+    [
+        "Serral", "Clem", "Maru", "Rogue", "Reynor", "Hero", "Dark", "ShowTime", "Solar", "ByuN"
+    ];
+
+    private void GoHeadToHead()
+    {
+        if (string.IsNullOrWhiteSpace(quickPlayer1) || string.IsNullOrWhiteSpace(quickPlayer2))
+            return;
+        Navigation.NavigateTo($"/matchhistory?p1={Uri.EscapeDataString(quickPlayer1.Trim())}&p2={Uri.EscapeDataString(quickPlayer2.Trim())}&mode=h2h");
+    }
+
+    private void GoSolo()
+    {
+        if (string.IsNullOrWhiteSpace(quickPlayer1))
+            return;
+        Navigation.NavigateTo($"/matchhistory?player={Uri.EscapeDataString(quickPlayer1.Trim())}&mode=solo");
+    }
+
+    private void OpenPlayer(string name) =>
+        Navigation.NavigateTo($"/matchhistory?player={Uri.EscapeDataString(name)}&mode=solo");
+}
