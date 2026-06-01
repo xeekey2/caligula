@@ -1,22 +1,19 @@
-﻿using Quartz;
-using Caligula.Web.ApiClients;
-using System.Threading.Tasks;
+﻿using Caligula.Service;
+using Quartz;
 
-namespace Caligula.DataCollector
+namespace Caligula.DataCollector;
+
+public class MatchHistoryJob : IJob
 {
-    public class MatchHistoryJob : IJob
+    private readonly DataCollectionService _dataCollectionService;
+
+    public MatchHistoryJob(DataCollectionService dataCollectionService)
     {
-        private readonly MatchHistoryApiClient _apiClient;
-
-        public MatchHistoryJob(MatchHistoryApiClient apiClient)
-        {
-            _apiClient = apiClient;
-        }
-
-        public async Task Execute(IJobExecutionContext context)
-        {
-            await _apiClient.RunDailyMatchHistoryUpdateAsync();
-        }
+        _dataCollectionService = dataCollectionService;
     }
 
+    public async Task Execute(IJobExecutionContext context)
+    {
+        await _dataCollectionService.RunDailyMatchHistoryUpdateAsync();
+    }
 }

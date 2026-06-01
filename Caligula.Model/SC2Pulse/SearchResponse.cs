@@ -3,9 +3,9 @@
 
     public class SearchResponse
     {
-        public int leagueMax { get; set; }
-        public int ratingMax { get; set; }
-        public int totalGamesPlayed { get; set; }
+        public int? leagueMax { get; set; }
+        public int? ratingMax { get; set; }
+        public int? totalGamesPlayed { get; set; }
         public Previousstats previousStats { get; set; }
         public Currentstats currentStats { get; set; }
         public Members members { get; set; }
